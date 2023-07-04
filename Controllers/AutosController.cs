@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Practica3.Datos;
 using Practica3.Modelos.AgenciaAutos;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Practica3.Controllers
 {
@@ -20,15 +21,67 @@ namespace Practica3.Controllers
         }
         #endregion
 
-        #region Trae los datos por ID
-
-        [HttpGet]
-        [Route("Obtener por ID")]
+        #region Traer por nombre
+        [HttpGet("ObtenerPorName")]
         //códigos de estado
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<CAutos> GetAutos(string Name)
+        {
+            CAutos cAutos = new CAutos();
+            //validaciones
 
+            if (Name == cAutos.Nombre)
+            {
+                return BadRequest();
+            };
+
+            var Autos = DatosDeAutos.ListaAutos.FirstOrDefault(a => a.Nombre == Name);
+
+            if (Autos == null)
+            {
+                return NotFound();
+            }
+            return Ok(Autos);
+        }
+        #endregion
+
+        #region Traer por Estado
+
+        [HttpGet("ObtenerPorEstado")]
+        //códigos de estado
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<CAutos> GetAutosEstado(string Estado)
+        {
+            CAutos cAutos = new CAutos();
+            //validaciones
+
+            if (Estado == cAutos.Estado)
+            {
+                return BadRequest();
+            };
+
+            var Autos = DatosDeAutos.ListaAutos.Where(a => a.Estado == Estado);
+
+            if (Autos == null)
+            {
+                return NotFound();
+            }
+            return Ok(Autos);
+        }
+
+        #endregion
+
+        #region Trae los datos por ID
+
+        [HttpGet("ObtenerPorID", Name = "GetAutos")]
+        //códigos de estado
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<CAutos> GetAutos(int id)
         {
             //validaciones
@@ -46,42 +99,40 @@ namespace Practica3.Controllers
             }
             return Ok(Autos);
         }
+
         #endregion
 
         #region Crear Autos
 
         [HttpPost]
-        [Route("Crear Autos")]
-        //códigos de estado
+        [Route("CrearAutos")]
+        // Códigos de estado
         [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<CAutos> CrearAutos([FromBody] CAutos autosDatos)
+        public ActionResult<CAutos> CrearAutos([FromBody] CAutos autosDaos)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            else if (DatosDeAutos.ListaAutos.FirstOrDefault(l => l.Nombre.ToUpper() == autosDatos.Nombre.ToUpper()) != null)
+            else if (DatosDeAutos.ListaAutos.FirstOrDefault(l => l.Nombre.ToUpper() == autosDaos.Nombre.ToUpper()) != null)
             {
-                ModelState.AddModelError("NombreExiste", "Ya exite un elementon con este nombre");
+                ModelState.AddModelError("NombreExiste", "Ya existe un elemento con este nombre");
                 return BadRequest(ModelState);
             }
-            else if (autosDatos == null)
+            else if (autosDaos == null)
             {
-                return BadRequest(autosDatos);
-            }
-            else if (autosDatos.ID > 0)
-            {
-                ModelState.AddModelError("!ID = 0", "El ID no debe ser diferente de 0");
-                return StatusCode(StatusCodes.Status500InternalServerError, ModelState);
+                return BadRequest(autosDaos);
             }
 
-            autosDatos.ID = DatosDeAutos.ListaAutos.OrderByDescending(a => a.ID).FirstOrDefault().ID + 1;
-            DatosDeAutos.ListaAutos.Add(autosDatos);
+            int maxId = DatosDeAutos.ListaAutos.Max(v => v.ID); // Obtener el ID máximo actual
+            autosDaos.ID = maxId + 1; // Asignar el siguiente ID incremental
 
-            return CreatedAtRoute("ObtenerAuto", new { id = autosDatos.ID }, autosDatos);
+            DatosDeAutos.ListaAutos.Add(autosDaos);
 
+            return Ok(autosDaos);
         }
         #endregion
 
@@ -117,19 +168,20 @@ namespace Practica3.Controllers
         #region Actulizar
 
         [HttpPut]
-        [Route ("Actualizar")]
+        [Route ("ActualizarAuto")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
 
-        public IActionResult UpdateAuto(int id, [FromBody] CAutos autos)
+        public IActionResult UpdateAuto( [FromBody] CAutos autos)
         {
 
-            if (autos == null || id!= autos.ID)
+            if (autos == null || autos.ID == 0)
             {
                 return BadRequest();
             }
 
-            var auto = DatosDeAutos.ListaAutos.FirstOrDefault(l => l.ID == id);
+            var auto = DatosDeAutos.ListaAutos.FirstOrDefault(l => l.ID == autos.ID);
+
             auto.Nombre = autos.Nombre;
             auto.Traccion = autos.Traccion;
             auto.Motor = autos.Motor;
